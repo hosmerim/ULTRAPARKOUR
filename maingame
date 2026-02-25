@@ -1,0 +1,291 @@
+import pygame
+import sys
+import time
+import math
+import random
+import os
+
+# --- BAŞLATMA ---
+pygame.init()
+EN, BOY = 800, 600
+ekran = pygame.display.set_mode((EN, BOY))
+pygame.display.set_caption("ULTRAPARKOUR")
+
+# --- V1 GÖRSEL YÜKLEME ---
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+try:
+    V1_GÖRSEL = pygame.image.load("karakter.png").convert_alpha()
+    V1_GÖRSEL = pygame.transform.scale(V1_GÖRSEL, (30, 30)) # Senin küpün boyutu 30x30 olduğu için böyle kalsın
+    resim_yuklendi = True
+except:
+    resim_yuklendi = False
+
+# --- AYARLAR ---
+ayarlar = {"dil": "EN", "performans_modu": False}
+metinler = {
+    "EN": {
+        "basla": "START", "ayarlar": "SETTINGS", "cikis": "QUIT",
+        "dil_sec": "LANGUAGE:", "mod_sec": "PERFORMANCE:", "geri": "BACK",
+        "zorluk": "// DIFFICULTY", "sektor": "// SELECT SECTOR", "deploy": "DEPLOY >>>",
+        "kolay": "EASY", "orta": "MEDIUM", "zor": "HARD", "extreme": "EXTREME",
+        "bitti": "CLEARED", "oldu": "DEAD", "tekrar": "RETRY",
+        "sektorler": "SECTORS", "ana_menu": "MENU", "on": "ON", "off": "OFF",
+        "hazir": "GET READY!"
+    },
+    "TR": {
+        "basla": "BASLA", "ayarlar": "AYARLAR", "cikis": "CIKIS",
+        "dil_sec": "DIL:", "mod_sec": "PERFORMANS:", "geri": "GERI",
+        "zorluk": "// ZORLUK", "sektor": "// SEKTOR SEC", "deploy": "BASLAT >>>",
+        "kolay": "KOLAY", "orta": "ORTA", "zor": "ZOR", "extreme": "EKSTREM",
+        "bitti": "TAMAMLANDI", "oldu": "ÖLDÜN", "tekrar": "TEKRAR",
+        "sektorler": "SECTÖRLER", "ana_menu": "MENÜ", "on": "AÇIK", "off": "KAPALI",
+        "hazir": "HAZIR OL!"
+    }
+}
+
+# --- RENKLER ---
+SIYAH, BEYAZ, GRI = (10, 10, 10), (255, 255, 255), (100, 100, 100)
+PARLAK_KIRMIZI, KOYU_KIRMIZI = (255, 0, 0), (60, 0, 0)
+YESIL, SARI, TURKUAZ, MAVI, MOR = (0, 255, 0), (255, 255, 0), (0, 255, 255), (0, 80, 255), (200, 0, 255)
+
+font_baslik = pygame.font.SysFont("Courier", 70, bold=True)
+font_buton = pygame.font.SysFont("Courier", 22, bold=True)
+font_ui = pygame.font.SysFont("Courier", 16, bold=True)
+
+saat = pygame.time.Clock()
+zorluk_hizi = 1.2
+dusman_sayisi = 1
+secili_harita = 1
+shake_amount = 0
+
+def scanline_ciz():
+    if not ayarlar["performans_modu"]:
+        for y in range(0, BOY, 4): pygame.draw.line(ekran, (0, 0, 0), (0, y), (EN, y))
+
+def harita_getir(no):
+    zemin = pygame.Rect(0, 550, EN, 50)
+    maps = {
+        1: [zemin, pygame.Rect(200, 450, 150, 20), pygame.Rect(450, 380, 150, 20), pygame.Rect(100, 300, 150, 20)],
+        2: [zemin, pygame.Rect(50, 420, 120, 20), pygame.Rect(250, 320, 120, 20), pygame.Rect(450, 220, 120, 20), pygame.Rect(650, 120, 120, 20)],
+        3: [zemin, pygame.Rect(50, 400, 100, 20), pygame.Rect(300, 400, 100, 20), pygame.Rect(600, 400, 100, 20), pygame.Rect(150, 250, 80, 20)],
+        4: [zemin, pygame.Rect(100, 480, 600, 20), pygame.Rect(200, 350, 400, 20), pygame.Rect(300, 220, 200, 20)],
+        5: [zemin, pygame.Rect(0, 400, 200, 20), pygame.Rect(300, 300, 200, 20), pygame.Rect(600, 200, 200, 20)],
+        6: [zemin, pygame.Rect(100, 450, 150, 20), pygame.Rect(400, 450, 150, 20), pygame.Rect(250, 300, 150, 20)],
+        7: [zemin, pygame.Rect(50, 450, 100, 20), pygame.Rect(200, 400, 100, 20), pygame.Rect(350, 350, 100, 20), pygame.Rect(500, 300, 100, 20)],
+        8: [zemin, pygame.Rect(50, 150, 200, 20), pygame.Rect(550, 150, 200, 20), pygame.Rect(300, 300, 200, 20)],
+        9: [zemin, pygame.Rect(0, 150, 150, 20), pygame.Rect(650, 150, 150, 20), pygame.Rect(325, 300, 150, 20)],
+        10: [zemin, pygame.Rect(50, 500, 50, 20), pygame.Rect(150, 450, 50, 20), pygame.Rect(250, 400, 50, 20), pygame.Rect(350, 350, 50, 20)],
+        11: [zemin, pygame.Rect(200, 400, 400, 20), pygame.Rect(0, 250, 100, 20), pygame.Rect(700, 250, 100, 20)],
+        12: [zemin, pygame.Rect(50, 480, 150, 20), pygame.Rect(600, 480, 150, 20), pygame.Rect(300, 350, 200, 20)],
+        13: [zemin, pygame.Rect(0, 480, 100, 20), pygame.Rect(700, 480, 100, 20), pygame.Rect(200, 300, 400, 20)],
+        14: [zemin, pygame.Rect(300, 500, 200, 20), pygame.Rect(300, 400, 200, 20), pygame.Rect(300, 300, 200, 20)],
+        15: [zemin, pygame.Rect(100, 450, 200, 20), pygame.Rect(500, 450, 200, 20), pygame.Rect(300, 320, 200, 20)]
+    }
+    return maps.get(no, [zemin])
+
+def ana_menu():
+    while True:
+        ekran.fill(SIYAH); L = metinler[ayarlar["dil"]]; fare = pygame.mouse.get_pos()
+        baslik = font_baslik.render("ULTRAPARKOUR", True, PARLAK_KIRMIZI)
+        ekran.blit(baslik, (EN//2 - baslik.get_width()//2, 120))
+        
+        btns = [pygame.Rect(300, 280, 200, 45), pygame.Rect(300, 340, 200, 45), pygame.Rect(300, 400, 200, 45)]
+        txts = [L["basla"], L["ayarlar"], L["cikis"]]
+        
+        for r, t in zip(btns, txts):
+            hov = r.collidepoint(fare); c = PARLAK_KIRMIZI if hov else GRI
+            pygame.draw.rect(ekran, c, r, 2)
+            ts = font_buton.render(t, True, c)
+            ekran.blit(ts, (r.centerx - ts.get_width()//2, r.centery - 11))
+            
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if btns[0].collidepoint(fare): secim_ekrani()
+                if btns[1].collidepoint(fare): ayarlar_menusu()
+                if btns[2].collidepoint(fare): pygame.quit(); sys.exit()
+        scanline_ciz(); pygame.display.update()
+
+def ayarlar_menusu():
+    while True:
+        ekran.fill(SIYAH); L = metinler[ayarlar["dil"]]; fare = pygame.mouse.get_pos(); tik = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN: tik = True
+        
+        btn_dil = pygame.Rect(450, 195, 120, 40)
+        btn_mod = pygame.Rect(450, 275, 120, 40)
+        btn_geri = pygame.Rect(300, 450, 200, 50)
+        
+        ekran.blit(font_buton.render(L["dil_sec"], True, BEYAZ), (100, 200))
+        pygame.draw.rect(ekran, TURKUAZ, btn_dil, 2)
+        ekran.blit(font_buton.render(ayarlar["dil"], True, TURKUAZ), (btn_dil.centerx-20, btn_dil.centery-10))
+        if tik and btn_dil.collidepoint(fare):
+            ayarlar["dil"] = "TR" if ayarlar["dil"] == "EN" else "EN"
+            
+        ekran.blit(font_buton.render(L["mod_sec"], True, BEYAZ), (100, 280))
+        mod_r = YESIL if ayarlar["performans_modu"] else PARLAK_KIRMIZI
+        pygame.draw.rect(ekran, mod_r, btn_mod, 2)
+        ekran.blit(font_buton.render(L["on"] if ayarlar["performans_modu"] else L["off"], True, mod_r), (btn_mod.centerx-20, btn_mod.centery-10))
+        if tik and btn_mod.collidepoint(fare):
+            ayarlar["performans_modu"] = not ayarlar["performans_modu"]
+            
+        pygame.draw.rect(ekran, BEYAZ, btn_geri, 2)
+        ekran.blit(font_buton.render(L["geri"], True, BEYAZ), (btn_geri.centerx-30, btn_geri.centery-10))
+        if tik and btn_geri.collidepoint(fare): return
+        
+        scanline_ciz(); pygame.display.update()
+
+def secim_ekrani():
+    global zorluk_hizi, secili_harita, dusman_sayisi
+    while True:
+        ekran.fill(SIYAH); L = metinler[ayarlar["dil"]]; fare = pygame.mouse.get_pos(); tik = False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN: tik = True
+        
+        def d_btn(txt, x, y, spd, cnt, cur_spd, cur_cnt, clr=YESIL, w=140):
+            r = pygame.Rect(x, y, w, 40); act = (spd == cur_spd and cnt == cur_cnt)
+            c = clr if act else (BEYAZ if r.collidepoint(fare) else GRI)
+            if act: pygame.draw.rect(ekran, c, r)
+            else: pygame.draw.rect(ekran, c, r, 2)
+            ts = font_ui.render(txt, True, SIYAH if act else c)
+            ekran.blit(ts, (r.centerx-ts.get_width()//2, r.centery-8))
+            return (spd, cnt) if tik and r.collidepoint(fare) else (None, None)
+
+        ekran.blit(font_ui.render(L["zorluk"], True, PARLAK_KIRMIZI), (50, 50))
+        for i, (t, s, n, cl) in enumerate([(L["kolay"], 1.2, 1, YESIL), (L["orta"], 1.2, 2, SARI), (L["zor"], 1.2, 3, PARLAK_KIRMIZI), (L["extreme"], 4.5, 3, MOR)]):
+            res = d_btn(t, 50 + i*180, 80, s, n, zorluk_hizi, dusman_sayisi, cl, 160)
+            if res[0]: zorluk_hizi, dusman_sayisi = res
+
+        ekran.blit(font_ui.render(L["sektor"], True, TURKUAZ), (50, 150))
+        for i in range(1, 16):
+            row, col = divmod(i-1, 5)
+            if d_btn(f"MAP {i}", 50 + col*150, 180 + row*50, i, 0, secili_harita, 0, TURKUAZ, 130)[0]: secili_harita = i
+
+        btn_go = pygame.Rect(300, 480, 200, 50); pygame.draw.rect(ekran, YESIL, btn_go, 2)
+        ekran.blit(font_buton.render(L["deploy"], True, YESIL), (330, 492))
+        if tik and btn_go.collidepoint(fare): oyun_dongusu()
+        scanline_ciz(); pygame.display.update()
+
+def oyun_dongusu():
+    global shake_amount, secili_harita
+    oyuncu = pygame.Rect(50, 500, 30, 30); oyuncu_y_hiz = 0; oyuncu_yerde = False
+    ziplama_hakki, dj_aktif, son_dj, son_ates = 0, False, 0, 0
+    mermiler, sari_kureler = [], []
+    spawn_noktalari = [(700, 100), (400, 50), (100, 50)]
+    dusmanlar = [{'rect': pygame.Rect(sp[0], sp[1], 30, 30), 'spawn': sp, 'y_hiz': 0, 'yerde': False, 'hayatta': True, 'olum_zamani': 0} for sp in spawn_noktalari[:dusman_sayisi]]
+    kazanma_kupu = pygame.Rect(EN//2, 50, 40, 40); platformlar = harita_getir(secili_harita)
+    
+    start_t = time.time(); last_sec = 4
+    while time.time() - start_t < 3:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+        ekran.fill(SIYAH); kalan = 3 - int(time.time() - start_t)
+        if kalan < last_sec: shake_amount = 30; last_sec = kalan
+        pulse = 1.0 + 0.3 * math.sin(time.time() * 20)
+        s_ox, s_oy = random.randint(-int(shake_amount), int(shake_amount)), random.randint(-int(shake_amount), int(shake_amount))
+        shake_amount *= 0.8
+        dyn_font = pygame.font.SysFont("Courier", int(120 * pulse), bold=True)
+        txt = dyn_font.render(str(kalan), True, SARI if kalan > 1 else PARLAK_KIRMIZI)
+        ekran.blit(txt, (EN//2 - txt.get_width()//2 + s_ox, BOY//2 - txt.get_height()//2 + s_oy))
+        scanline_ciz(); pygame.display.update(); saat.tick(60)
+
+    while True:
+        su_an = time.time()
+        ates_cd, dj_cd = max(0, 3-(su_an-son_ates)), max(0, 5-(su_an-son_dj))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
+                if oyuncu_yerde: oyuncu_y_hiz, oyuncu_yerde, ziplama_hakki = -15, False, 1
+                elif dj_aktif and ziplama_hakki == 1 and dj_cd == 0: oyuncu_y_hiz, ziplama_hakki, son_dj = -15, 2, su_an
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and ates_cd == 0:
+                fx, fy = pygame.mouse.get_pos(); aci = math.atan2(fy - oyuncu.centery, fx - oyuncu.centerx)
+                mermiler.append({'rect': pygame.Rect(oyuncu.centerx, oyuncu.centery, 10, 10), 'vx': math.cos(aci)*12, 'vy': math.sin(aci)*12})
+                son_ates = su_an; shake_amount = 5
+        
+        tus = pygame.key.get_pressed()
+        if tus[pygame.K_a]: oyuncu.x -= 5
+        if tus[pygame.K_d]: oyuncu.x += 5
+        oyuncu.x = max(0, min(EN-30, oyuncu.x)); oyuncu_y_hiz += 0.8; oyuncu.y += oyuncu_y_hiz
+        
+        for i, d in enumerate(dusmanlar):
+            if d['hayatta']:
+                d['y_hiz'] += 0.8; d['rect'].y += d['y_hiz']
+                d['rect'].x += zorluk_hizi if d['rect'].centerx < oyuncu.centerx else -zorluk_hizi
+                if d['yerde'] and (d['rect'].y > oyuncu.y + 40 or abs(d['rect'].x - oyuncu.x) < 50): d['y_hiz'] = -14.5; d['yerde'] = False
+                if oyuncu.colliderect(d['rect']): bolum_sonu_menusu(False)
+            elif su_an - d['olum_zamani'] >= 5: d['rect'].topleft, d['y_hiz'], d['hayatta'] = d['spawn'], 0, True
+
+        for m in mermiler[:]:
+            m['rect'].x += m['vx']; m['rect'].y += m['vy']
+            for d in dusmanlar:
+                if d['hayatta'] and d['rect'].colliderect(m['rect']):
+                    sari_kureler.append(pygame.Rect(d['rect'].x, d['rect'].y, 20, 20))
+                    d['hayatta'], d['olum_zamani'] = False, su_an
+                    mermiler.remove(m); shake_amount = 10; break
+
+        oyuncu_yerde = False
+        for p in platformlar:
+            if oyuncu.colliderect(p) and oyuncu_y_hiz > 0: oyuncu.bottom, oyuncu_y_hiz, oyuncu_yerde = p.top, 0, True
+            for d in dusmanlar:
+                if d['hayatta'] and d['rect'].colliderect(p) and d['y_hiz'] > 0: d['rect'].bottom, d['y_hiz'], d['yerde'] = p.top, 0, True
+        
+        for k in sari_kureler[:]:
+            if oyuncu.colliderect(k): dj_aktif = True; sari_kureler.remove(k)
+        if oyuncu.colliderect(kazanma_kupu): bolum_sonu_menusu(True)
+        if oyuncu.y > BOY: bolum_sonu_menusu(False)
+
+        ekran.fill(SIYAH); ox, oy = random.randint(-int(shake_amount), int(shake_amount)), random.randint(-int(shake_amount), int(shake_amount))
+        shake_amount *= 0.9
+        for p in platformlar: pygame.draw.rect(ekran, KOYU_KIRMIZI, (p.x+ox, p.y+oy, p.w, p.h))
+        
+        # --- OYUNCU ÇİZİMİ (V1 ENTEGRESİ) ---
+        if resim_yuklendi:
+            ekran.blit(V1_GÖRSEL, (oyuncu.x+ox, oyuncu.y+oy))
+        else:
+            pygame.draw.rect(ekran, YESIL, (oyuncu.x+ox, oyuncu.y+oy, 30, 30))
+            
+        for d in dusmanlar:
+            if d['hayatta']: pygame.draw.rect(ekran, PARLAK_KIRMIZI, (d['rect'].x+ox, d['rect'].y+oy, 30, 30))
+        pygame.draw.rect(ekran, MAVI, (kazanma_kupu.x+ox, kazanma_kupu.y+oy, 40, 40))
+        for k in sari_kureler: pygame.draw.ellipse(ekran, SARI, (k.x+ox, k.y+oy, k.w, k.h))
+        for m in mermiler: pygame.draw.rect(ekran, TURKUAZ, (m['rect'].x+ox, m['rect'].y+oy, 10, 10))
+        
+        pygame.draw.rect(ekran, GRI, (20, 20, 150, 10)); pygame.draw.rect(ekran, TURKUAZ, (20, 20, 150*(1-ates_cd/3), 10))
+        if dj_aktif: pygame.draw.rect(ekran, GRI, (20, 40, 150, 10)); pygame.draw.rect(ekran, SARI, (20, 40, 150*(1-dj_cd/5), 10))
+        for i, d in enumerate(dusmanlar):
+            if not d['hayatta']:
+                rt = max(0, 5 - (su_an - d['olum_zamani']))
+                ekran.blit(font_ui.render(f"E{i+1} RESPAWN: {rt:.1f}s", True, PARLAK_KIRMIZI), (EN-180, 20+i*25))
+
+        scanline_ciz(); pygame.display.update(); saat.tick(60)
+
+def bolum_sonu_menusu(kazandi):
+    global secili_harita
+    while True:
+        ekran.fill(SIYAH); L = metinler[ayarlar["dil"]]
+        txt = L["bitti"] if kazandi else L["oldu"]
+        t_s = font_baslik.render(txt, True, YESIL if kazandi else PARLAK_KIRMIZI)
+        ekran.blit(t_s, (EN//2 - t_s.get_width()//2, 150))
+        fare, tik = pygame.mouse.get_pos(), False
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN: tik = True
+        
+        main_btn = "NEXT LEVEL" if kazandi and secili_harita < 15 else ("COMPLETED!" if kazandi else "RETRY")
+        btns = [(main_btn, 300, 280), (L["sektorler"], 300, 340), (L["ana_menu"], 300, 400)]
+        for i, (m, x, y) in enumerate(btns):
+            r = pygame.Rect(x, y, 200, 45); hov = r.collidepoint(fare); c = BEYAZ if hov else GRI
+            pygame.draw.rect(ekran, c, r, 1)
+            ts = font_buton.render(m, True, c)
+            ekran.blit(ts, (r.centerx - ts.get_width()//2, y+10))
+            if tik and r.collidepoint(fare):
+                if i == 0:
+                    if kazandi and secili_harita < 15: secili_harita += 1
+                    oyun_dongusu()
+                elif i == 1: secim_ekrani()
+                elif i == 2: ana_menu()
+        scanline_ciz(); pygame.display.update()
+
+ana_menu()
