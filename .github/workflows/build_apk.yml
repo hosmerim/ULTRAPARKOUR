@@ -31,16 +31,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install buildozer cython==0.29.36
 
-      - name: Android SDK/NDK önbelleği
-        uses: actions/cache@v4
-        with:
-          path: |
-            .buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
-
-      - name: APK derle
+      - name: İlk deneme (SDK/NDK'yı indirtmek için — lisans ekranında duracak, sorun değil)
         run: |
-          yes | buildozer android debug || buildozer android debug
+          yes | buildozer android debug || true
+
+      - name: Android SDK lisanslarını kabul et
+        run: |
+          SDKMANAGER=$(find ~/.buildozer -type f -name "sdkmanager" 2>/dev/null | head -1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager bulunamadı, dizin yapısını listeliyorum:"
+            find ~/.buildozer -maxdepth 5 -type d
+            exit 1
+          fi
+          echo "Bulunan sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses || true
+
+      - name: APK derle (asıl derleme)
+        run: |
+          buildozer android debug
 
       - name: APK'yı yükle
         uses: actions/upload-artifact@v4
