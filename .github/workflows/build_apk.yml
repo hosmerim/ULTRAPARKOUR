@@ -1,58 +1,27 @@
-name: Android APK Derle
 
+name: Android APK Derle
+ 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
+ 
 jobs:
   build-apk:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
       - name: Kodu al
         uses: actions/checkout@v4
-
-      - name: Python kur
-        uses: actions/setup-python@v5
+ 
+      - name: Buildozer ile APK derle (hazır Docker imajı — bağımlılık derdi yok)
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
         with:
-          python-version: '3.11'
-
-      - name: Sistem bağımlılıklarını kur
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
-            pkg-config zlib1g-dev libncurses-dev libncursesw5-dev libtinfo6 \
-            cmake libffi-dev libssl-dev build-essential ccache
-
-      - name: Buildozer ve Cython kur
-        run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.36
-
-      - name: İlk deneme (SDK/NDK'yı indirtmek için — lisans ekranında duracak, sorun değil)
-        run: |
-          yes | buildozer android debug || true
-
-      - name: Android SDK lisanslarını kabul et
-        run: |
-          SDKMANAGER=$(find ~/.buildozer -type f -name "sdkmanager" 2>/dev/null | head -1)
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager bulunamadı, dizin yapısını listeliyorum:"
-            find ~/.buildozer -maxdepth 5 -type d
-            exit 1
-          fi
-          echo "Bulunan sdkmanager: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses || true
-
-      - name: APK derle (asıl derleme)
-        run: |
-          buildozer android debug
-
+          command: buildozer android debug
+          buildozer_version: stable
+ 
       - name: APK'yı yükle
         uses: actions/upload-artifact@v4
         with:
           name: ultraparkour-apk
-          path: bin/*.apk
-          if-no-files-found: error
+          path: ${{ steps.buildozer.outputs.filename }}
